@@ -76,7 +76,7 @@ function WidgetTitle({ icon, title, aside }: { icon: React.ReactNode; title: str
 
 function LoadingSkeleton() {
   return (
-    <main className="min-h-screen bg-paper px-4 py-5">
+    <main className="min-h-screen bg-paper px-3 py-4 sm:px-4 sm:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
         <div className="h-28 animate-pulse rounded-md bg-white" />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -95,7 +95,7 @@ function LoadingSkeleton() {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <main className="min-h-screen bg-paper px-4 py-8">
+    <main className="min-h-screen bg-paper px-3 py-6 sm:px-4 sm:py-8">
       <div className="mx-auto max-w-3xl rounded-md border border-coral/30 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-coral" />
@@ -133,7 +133,7 @@ function OverviewCard({
   const positive = typeof change === "number" && change >= 0;
 
   return (
-    <Card>
+    <Card className="p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-ink/65">
           {icon}
@@ -145,7 +145,7 @@ function OverviewCard({
           </span>
         ) : null}
       </div>
-      <div className="mt-4 text-2xl font-bold text-ink">{value}</div>
+      <div className="mt-3 text-2xl font-bold text-ink sm:mt-4">{value}</div>
       {detail ? <div className="mt-2 text-xs font-semibold text-ink/55">{detail}</div> : null}
     </Card>
   );
@@ -153,19 +153,19 @@ function OverviewCard({
 
 function SectorHeatmap({ sectors }: { sectors: SectorScore[] }) {
   return (
-    <Card>
+    <Card className="scroll-mt-4">
       <WidgetTitle icon={<BarChart3 className="size-5 text-river" />} title="Sector Heatmap" />
       {sectors.length === 0 ? (
         <EmptyState text="No sector rankings have been saved yet." />
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
           {sectors.map((sector) => (
-            <div key={sector.sector} className={`min-h-28 rounded-md p-3 ${heatColor(sector.sectorScore)}`}>
+            <div key={sector.sector} className={`min-h-24 rounded-md p-3 sm:min-h-28 ${heatColor(sector.sectorScore)}`}>
               <div className="flex items-start justify-between gap-2">
                 <h3 className="text-sm font-bold leading-5">{sector.sector}</h3>
                 <span className="rounded bg-white/20 px-2 py-1 text-xs font-bold">#{sector.rank}</span>
               </div>
-              <div className="mt-4 text-3xl font-black">{score(sector.sectorScore)}</div>
+              <div className="mt-3 text-2xl font-black sm:mt-4 sm:text-3xl">{score(sector.sectorScore)}</div>
               <div className="mt-2 text-xs opacity-90">RS {score(sector.relativeStrengthScore)} · MOM {score(sector.momentumScore)}</div>
             </div>
           ))}
@@ -204,8 +204,35 @@ function TopStocks({ stocks }: { stocks: StockScore[] }) {
       {stocks.length === 0 ? (
         <EmptyState text="No stock rankings have been saved yet." />
       ) : (
-        <div className="overflow-hidden rounded-md border border-ink/10">
-          <table className="w-full border-collapse text-left text-sm">
+        <>
+          <div className="space-y-2 sm:hidden">
+            {stocks.slice(0, 20).map((stock) => (
+              <article key={stock.symbol} className="rounded-md border border-ink/10 bg-paper p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-ink/45">#{stock.rank}</span>
+                      <h3 className="truncate text-base font-black text-ink">{stock.symbol}</h3>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-ink/55">{stock.name}</p>
+                  </div>
+                  <span className={`rounded-md border px-2 py-1 text-sm font-bold ${scoreTone(stock.totalScore)}`}>{score(stock.totalScore)}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded bg-white p-2">
+                    <div className="font-semibold text-ink/50">Move</div>
+                    <div className={stock.oneDayChangePercent >= 0 ? "mt-1 font-black text-mint" : "mt-1 font-black text-coral"}>{pct(stock.oneDayChangePercent)}</div>
+                  </div>
+                  <div className="rounded bg-white p-2">
+                    <div className="font-semibold text-ink/50">Volume</div>
+                    <div className="mt-1 font-black text-ink">{stock.volumeRatio.toFixed(2)}x</div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-hidden rounded-md border border-ink/10 sm:block">
+            <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-river/10 text-xs uppercase text-ink/60">
               <tr>
                 <th className="px-3 py-3">Rank</th>
@@ -233,8 +260,9 @@ function TopStocks({ stocks }: { stocks: StockScore[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+        </>
       )}
     </Card>
   );
@@ -347,9 +375,9 @@ export function Dashboard() {
 
   return (
     <main className="min-h-screen bg-paper">
-      <section className="px-4 pb-5 pt-4">
+      <section className="px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4">
-          <div className="flex flex-col justify-between gap-4 rounded-md border border-ink/15 bg-white p-4 shadow-sm sm:flex-row sm:items-start">
+          <div className="flex flex-col justify-between gap-4 rounded-md border border-ink/15 bg-white p-4 shadow-sm lg:flex-row lg:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase text-ink/55">
                 <span>{title}</span>
@@ -362,20 +390,20 @@ export function Dashboard() {
                   </>
                 ) : null}
               </div>
-              <h1 className="mt-2 text-3xl font-black leading-tight text-ink sm:text-4xl">TerminalX.Trading</h1>
+              <h1 className="mt-2 text-2xl font-black leading-tight text-ink sm:text-4xl">TerminalX.Trading</h1>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-ink/70 sm:text-base">{report.summary}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center">
               <Link
                 href="/watchlist"
-                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
               >
                 <BarChart3 className="size-4" />
                 Watchlist
               </Link>
               <Link
                 href="/notifications"
-                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
               >
                 <BellRing className="size-4" />
                 Alert analytics
@@ -384,7 +412,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div id="market" className="grid scroll-mt-4 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             <OverviewCard label="Nifty" value={numberLabel(details?.niftyValue)} change={details?.niftyChangePercent} icon={<TrendingUp className="size-4 text-mint" />} />
             <OverviewCard label="Bank Nifty" value={numberLabel(details?.bankNiftyValue)} change={details?.bankNiftyChangePercent} icon={<BarChart3 className="size-4 text-river" />} />
             <OverviewCard label="India VIX" value={numberLabel(details?.indiaVixValue)} change={details?.indiaVixChangePercent} icon={<Activity className="size-4 text-coral" />} />
@@ -393,7 +421,7 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="px-4 pb-6">
+      <section className="px-3 pb-6 sm:px-4">
         <div className="mx-auto grid max-w-7xl gap-4 xl:grid-cols-[1.5fr_0.9fr]">
           <div className="space-y-4">
             <SectorHeatmap sectors={sortedSectors} />

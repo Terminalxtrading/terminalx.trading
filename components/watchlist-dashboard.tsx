@@ -21,7 +21,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function LoadingState() {
   return (
-    <main className="min-h-screen bg-paper px-4 py-5">
+    <main className="min-h-screen bg-paper px-3 py-4 sm:px-4 sm:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
         <div className="h-32 animate-pulse rounded-md bg-white" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -35,7 +35,7 @@ function LoadingState() {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <main className="min-h-screen bg-paper px-4 py-8">
+    <main className="min-h-screen bg-paper px-3 py-6 sm:px-4 sm:py-8">
       <div className="mx-auto max-w-3xl rounded-md border border-coral/30 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-coral" />
@@ -79,7 +79,7 @@ function StockCard({
   isBusy: boolean;
 }) {
   return (
-    <article className="rounded-md border border-ink/10 bg-white p-4">
+    <article className="rounded-md border border-ink/10 bg-white p-3 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -92,12 +92,12 @@ function StockCard({
           <p className="mt-1 text-sm text-ink/55">{stock.name}</p>
           <p className="mt-3 text-sm leading-6 text-ink/70">{stock.researchNote}</p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="grid shrink-0 grid-cols-[1fr_auto] gap-2 sm:flex">
           <button
             type="button"
             onClick={() => onTrack(stock)}
             disabled={isBusy}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold hover:bg-paper disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-ink/15 px-3 py-2 text-sm font-semibold hover:bg-paper disabled:opacity-50"
           >
             <CheckCircle2 className="size-4" />
             {stock.isTracked ? "Refresh" : "Track"}
@@ -106,7 +106,7 @@ function StockCard({
             type="button"
             onClick={() => onRemove(stock)}
             disabled={isBusy}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-coral/30 px-3 py-2 text-sm font-semibold text-coral hover:bg-coral/10 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-coral/30 px-3 py-2 text-sm font-semibold text-coral hover:bg-coral/10 disabled:opacity-50"
             title="Remove stock"
           >
             <Trash2 className="size-4" />
@@ -121,7 +121,7 @@ function StockCard({
         <ScoreBar label="Volume" value={stock.volumeScore} />
       </div>
 
-      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
         <div className="rounded-md bg-paper p-3">
           <div className="text-xs font-semibold text-ink/50">1D</div>
           <div className={stock.oneDayChangePercent >= 0 ? "mt-1 font-bold text-mint" : "mt-1 font-bold text-coral"}>{pct(stock.oneDayChangePercent)}</div>
@@ -248,13 +248,13 @@ export function WatchlistDashboard() {
   if (!data) return <ErrorState message={error ?? "Watchlist data did not load."} onRetry={loadWatchlist} />;
 
   return (
-    <main className="min-h-screen bg-paper px-4 py-5">
+    <main className="min-h-screen bg-paper px-3 py-4 sm:px-4 sm:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
         <Card>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-xs font-bold uppercase text-ink/55">Realtime watchlist engine</div>
-              <h1 className="mt-2 text-3xl font-black text-ink sm:text-4xl">Watchlist Health</h1>
+              <h1 className="mt-2 text-2xl font-black text-ink sm:text-4xl">Watchlist Health</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
                 Add, remove, and track stocks with research-only trend, momentum, relative strength, and volume scores. Supabase realtime refreshes this page when watchlist rows change.
               </p>
@@ -267,26 +267,26 @@ export function WatchlistDashboard() {
           <div className="rounded-md border border-coral/30 bg-coral/10 p-3 text-sm font-semibold text-coral">{error}</div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          <Card className="p-3 sm:p-4">
             <div className="flex items-center justify-between text-sm font-semibold text-ink/60">
               Watchlist Health Score <Activity className="size-5 text-river" />
             </div>
             <div className="mt-3 text-3xl font-black">{data.healthScore.toFixed(0)}</div>
           </Card>
-          <Card>
+          <Card className="p-3 sm:p-4">
             <div className="flex items-center justify-between text-sm font-semibold text-ink/60">
               Tracked Stocks <CheckCircle2 className="size-5 text-mint" />
             </div>
             <div className="mt-3 text-3xl font-black">{data.trackedCount}</div>
           </Card>
-          <Card>
+          <Card className="p-3 sm:p-4">
             <div className="flex items-center justify-between text-sm font-semibold text-ink/60">
               Average Momentum <TrendingUp className="size-5 text-gold" />
             </div>
             <div className="mt-3 text-3xl font-black">{trackedStocks.length ? (trackedStocks.reduce((total, stock) => total + stock.momentumScore, 0) / trackedStocks.length).toFixed(0) : "0"}</div>
           </Card>
-          <Card>
+          <Card className="p-3 sm:p-4">
             <div className="flex items-center justify-between text-sm font-semibold text-ink/60">
               Average Volume <BarChart3 className="size-5 text-coral" />
             </div>
@@ -318,7 +318,7 @@ export function WatchlistDashboard() {
             <button
               type="submit"
               disabled={isAdding}
-              className="inline-flex min-h-11 items-center justify-center gap-2 self-end rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/90 disabled:opacity-50"
+              className="inline-flex min-h-12 items-center justify-center gap-2 self-end rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-ink/90 disabled:opacity-50"
             >
               <Plus className="size-4" />
               {isAdding ? "Adding..." : "Add stock"}

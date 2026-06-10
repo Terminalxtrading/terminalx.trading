@@ -25,7 +25,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function LoadingState() {
   return (
-    <main className="min-h-screen bg-paper px-4 py-5">
+    <main className="min-h-screen bg-paper px-3 py-4 sm:px-4 sm:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
         <div className="h-28 animate-pulse rounded-md bg-white" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -41,7 +41,7 @@ function LoadingState() {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <main className="min-h-screen bg-paper px-4 py-8">
+    <main className="min-h-screen bg-paper px-3 py-6 sm:px-4 sm:py-8">
       <div className="mx-auto max-w-3xl rounded-md border border-coral/30 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-coral" />
@@ -65,7 +65,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
-    <Card>
+    <Card className="p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-semibold text-ink/60">{label}</div>
         {icon}
@@ -84,7 +84,7 @@ function StatusIcon({ status }: { status: NotificationStatus }) {
 
 function AlertRow({ alert }: { alert: NotificationHistoryItem }) {
   return (
-    <article className="rounded-md border border-ink/10 bg-white p-4">
+    <article className="rounded-md border border-ink/10 bg-white p-3 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -94,7 +94,7 @@ function AlertRow({ alert }: { alert: NotificationHistoryItem }) {
               {alert.notificationStatus}
             </span>
           </div>
-          <h2 className="mt-3 text-base font-bold text-ink">{alert.title}</h2>
+          <h2 className="mt-3 text-base font-bold leading-6 text-ink">{alert.title}</h2>
           <p className="mt-2 text-sm leading-6 text-ink/70">{alert.reason}</p>
         </div>
         <div className="shrink-0 text-left text-xs text-ink/55 sm:text-right">
@@ -109,7 +109,7 @@ function AlertRow({ alert }: { alert: NotificationHistoryItem }) {
         </div>
         <div className="rounded-md bg-paper p-3 sm:col-span-2">
           <div className="text-xs font-semibold text-ink/50">Stocks affected</div>
-          <div className="mt-1 font-bold">{alert.stocksAffected.length > 0 ? alert.stocksAffected.join(", ") : "Broad market"}</div>
+          <div className="mt-1 break-words font-bold">{alert.stocksAffected.length > 0 ? alert.stocksAffected.join(", ") : "Broad market"}</div>
         </div>
       </div>
     </article>
@@ -152,13 +152,13 @@ export function NotificationAnalyticsView() {
   }
 
   return (
-    <main className="min-h-screen bg-paper px-4 py-5">
+    <main className="min-h-screen bg-paper px-3 py-4 sm:px-4 sm:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
         <Card>
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <div className="text-xs font-bold uppercase text-ink/55">Notification analytics</div>
-              <h1 className="mt-2 text-3xl font-black text-ink sm:text-4xl">Alert History</h1>
+              <h1 className="mt-2 text-2xl font-black text-ink sm:text-4xl">Alert History</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
                 Review alert priorities, delivery outcomes, affected sectors, and affected stocks. Research-only alerts do not contain buy/sell recommendations.
               </p>
@@ -167,7 +167,7 @@ export function NotificationAnalyticsView() {
           </div>
         </Card>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <StatCard label="Total alerts" value={data.total} icon={<BellRing className="size-5 text-river" />} />
           <StatCard label="Critical" value={data.byPriority.Critical} icon={<AlertTriangle className="size-5 text-coral" />} />
           <StatCard label="Sent" value={data.byStatus.sent} icon={<CheckCircle2 className="size-5 text-mint" />} />

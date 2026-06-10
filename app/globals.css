@@ -11,9 +11,23 @@ body {
   min-height: 100vh;
   background: #f8f7f2;
   color: #1d2433;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
 input {
   font: inherit;
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4.75rem);
+  }
 }
