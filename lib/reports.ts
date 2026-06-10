@@ -1,4 +1,3 @@
-import { sampleDashboardData, sampleReport } from "@/lib/sample-data";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { DashboardData, DashboardReportSummary, MarketMoodDetails, MarketReport, SectorScore, StockScore } from "@/lib/types";
 
@@ -219,7 +218,7 @@ export async function getLatestReport(): Promise<MarketReport> {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return sampleReport;
+    throw new Error("Supabase environment variables are not configured.");
   }
 
   const { data, error } = await supabase
@@ -229,8 +228,12 @@ export async function getLatestReport(): Promise<MarketReport> {
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) {
-    return sampleReport;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error("No live market report found. Run the scanner to create the first report.");
   }
 
   return mapReportRow(data as unknown as ReportRow);
@@ -240,7 +243,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return sampleDashboardData;
+    throw new Error("Supabase environment variables are not configured.");
   }
 
   const { data: latestReport, error: reportError } = await supabase
@@ -255,7 +258,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   if (!latestReport) {
-    return sampleDashboardData;
+    throw new Error("No live market report found. Run the scanner to create the first report.");
   }
 
   const report = mapReportRow(latestReport as unknown as ReportRow);

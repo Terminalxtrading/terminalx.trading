@@ -1,4 +1,3 @@
-import { sampleNotificationAnalytics } from "@/lib/sample-data";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { AlertPriority, NotificationAnalytics, NotificationHistoryItem, NotificationStatus } from "@/lib/types";
 
@@ -75,7 +74,7 @@ export async function getNotificationAnalytics(): Promise<NotificationAnalytics>
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return sampleNotificationAnalytics;
+    throw new Error("Supabase environment variables are not configured.");
   }
 
   const { data, error } = await supabase

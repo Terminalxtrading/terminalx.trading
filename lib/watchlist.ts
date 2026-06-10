@@ -49,29 +49,6 @@ const watchlistSelect = [
   "updated_at"
 ].join(",");
 
-const sampleWatchlistStocks: WatchlistStock[] = [
-  {
-    id: "sample-reliance",
-    symbol: "RELIANCE.NS",
-    name: "Reliance Industries",
-    isTracked: true,
-    trendScore: 62,
-    momentumScore: 58,
-    relativeStrengthScore: 55,
-    volumeScore: 51,
-    healthScore: 57,
-    oneDayChangePercent: 0.4,
-    fiveDayChangePercent: 1.2,
-    twentyDayChangePercent: 2.1,
-    volumeRatio: 1.1,
-    latestClose: 1420,
-    researchNote: "Sample research-only watchlist row.",
-    lastScannedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
 function numberValue(value: unknown) {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -226,12 +203,7 @@ function round(value: number) {
 export async function getWatchlistDashboard(): Promise<WatchlistDashboardData> {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    return {
-      stocks: sampleWatchlistStocks,
-      trackedCount: sampleWatchlistStocks.filter((stock) => stock.isTracked).length,
-      healthScore: sampleWatchlistStocks[0]?.healthScore ?? 0,
-      isFallback: true
-    };
+    throw new Error("Supabase environment variables are not configured.");
   }
 
   const { data, error } = await supabase.from("watchlist_stocks").select(watchlistSelect).order("health_score", { ascending: false });
