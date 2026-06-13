@@ -146,14 +146,11 @@ def save_market_intelligence(
 
 
 def save_report(report: dict[str, Any], mood: MarketMoodResult) -> str:
-    response = supabase_post(
-        "market_reports",
-        {
-            **report,
-            "market_mood_details": mood.to_dict(),
-        },
-        prefer_return=True,
-    )
+    payload = {
+        **report,
+        "market_mood_details": mood.to_dict(),
+    }
+    response = supabase_post("market_reports", payload, prefer_return=True, allow_missing_options_research=True)
     data = response.json()
     if not data:
         raise RuntimeError("Supabase did not return the inserted report id.")
@@ -278,6 +275,7 @@ def supabase_post(
     payload: dict[str, Any] | list[dict[str, Any]],
     prefer_return: bool = False,
     allow_conflict: bool = False,
+    allow_missing_options_research: bool = False,
 ) -> requests.Response:
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise RuntimeError("Missing Supabase environment variables.")
@@ -296,6 +294,28 @@ def supabase_post(
     )
     if allow_conflict and response.status_code == 409:
         return response
+    if (
+        allow_missing_options_research
+        and table == "market_reports"
+        and response.status_code in {400, 404}
+        and "options_research" in response.text
+        and isinstance(payload, dict)
+    ):
+        fallback_payload = {key: value for key, value in payload.items() if key != "options_research"}
+        print("Supabase options_research column is missing; saving report without options research.")
+        fallback_response = requests.post(
+            f"{SUPABASE_URL}/rest/v1/{table}",
+            headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": prefer,
+            },
+            data=json.dumps(fallback_payload),
+            timeout=30,
+        )
+        fallback_response.raise_for_status()
+        return fallback_response
     response.raise_for_status()
     return response
 

@@ -33,6 +33,21 @@ const reportSelect = [
   "created_at"
 ].join(",");
 
+const reportSelectWithoutOptionsResearch = [
+  "id",
+  "report_date",
+  "session",
+  "market_mood",
+  "market_mood_details",
+  "sector_in_focus",
+  "stocks_in_focus",
+  "extreme_movement_alerts",
+  "watchlist",
+  "catalysts",
+  "summary",
+  "created_at"
+].join(",");
+
 const reportSummarySelect = ["id", "report_date", "session", "market_mood", "sector_in_focus", "created_at"].join(",");
 
 const sectorScoreSelect = [
@@ -346,6 +361,35 @@ function assertReportIsCurrent(report: MarketReport) {
   }
 }
 
+function isMissingOptionsResearchColumn(error: { message?: string; code?: string } | null) {
+  return Boolean(
+    error &&
+      (error.message?.includes("options_research") ||
+        error.message?.includes("market_reports.options_research") ||
+        error.code === "PGRST204")
+  );
+}
+
+async function fetchLatestReportRow(supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>) {
+  const response = await supabase
+    .from("market_reports")
+    .select(reportSelect)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!isMissingOptionsResearchColumn(response.error)) {
+    return response;
+  }
+
+  return supabase
+    .from("market_reports")
+    .select(reportSelectWithoutOptionsResearch)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+}
+
 export async function getLatestReport(): Promise<MarketReport> {
   const supabase = getSupabaseAdmin();
 
@@ -353,12 +397,7 @@ export async function getLatestReport(): Promise<MarketReport> {
     throw new Error("Supabase environment variables are not configured.");
   }
 
-  const { data, error } = await supabase
-    .from("market_reports")
-    .select(reportSelect)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await fetchLatestReportRow(supabase);
 
   if (error) {
     throw new Error(error.message);
@@ -380,12 +419,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     throw new Error("Supabase environment variables are not configured.");
   }
 
-  const { data: latestReport, error: reportError } = await supabase
-    .from("market_reports")
-    .select(reportSelect)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: latestReport, error: reportError } = await fetchLatestReportRow(supabase);
 
   if (reportError) {
     throw new Error(reportError.message);
