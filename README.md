@@ -82,6 +82,13 @@ This app is for education, tracking, and personal research only. It does not pro
    -- paste the contents of supabase/migrations/006_realtime_worker.sql
    ```
 
+   Then run the trade intelligence migration:
+
+   ```sql
+   -- Supabase SQL editor
+   -- paste the contents of supabase/migrations/007_trade_intelligence.sql
+   ```
+
 3. Copy environment variables:
 
    ```bash
@@ -178,6 +185,7 @@ The free realtime workflow in `.github/workflows/free-realtime-scanner.yml` runs
 - Sector and stock scores are research rankings only. They are not buy, sell, hold, target-price, or allocation recommendations.
 - Setup quality, attention score, and support/resistance watch zones are research context only. They are not entry calls, stop-loss levels, or trade instructions.
 - Options strike research is based on free option-chain data and is research context only. It is not an entry, exit, target, or stop-loss recommendation.
+- Trade intelligence confidence, risk, and attention scores are research filters only. They are not trade instructions or recommendations.
 - NIFTY and BANKNIFTY use NSE option-chain data. SENSEX options require a BSE option-chain feed before live strike ranking can be shown.
 - The realtime worker polls every 60 seconds only during NSE market hours by default. Free data feeds may still be delayed, throttled, or temporarily unavailable.
 - Catalyst scanning uses configurable free RSS/news queries. Set `MARKET_CATALYST_QUERIES` as a `|`-separated list to customize news, geopolitical, crude oil, FII/DII, currency, or sector themes.

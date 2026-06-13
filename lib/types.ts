@@ -18,6 +18,10 @@ export type StockFocus = {
   resistanceZoneLow?: number;
   resistanceZoneHigh?: number;
   historicalEdgeScore?: number;
+  confidenceScore?: number;
+  riskScore?: number;
+  whyInFocus?: string;
+  marketContext?: string;
   riskNote?: string;
   catalystSummary?: string;
   reason: string;
@@ -75,6 +79,11 @@ export type OptionStrikeCandidate = {
   impliedVolatility: number;
   distanceFromSpotPercent: number;
   score: number;
+  confidenceScore: number;
+  riskScore: number;
+  attentionScore: number;
+  whyInFocus: string;
+  marketContext: string;
   reason: string;
   riskNote: string;
 };
@@ -157,6 +166,10 @@ export type StockScore = {
   resistanceZoneLow: number;
   resistanceZoneHigh: number;
   historicalEdgeScore: number;
+  confidenceScore: number;
+  riskScore: number;
+  whyInFocus: string;
+  marketContext: string;
   riskNote: string;
   catalystSummary: string;
   researchNote: string;

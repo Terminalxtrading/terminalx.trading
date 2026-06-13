@@ -49,6 +49,16 @@ function scoreTone(value: number) {
   return "border-gold/30 bg-gold/15 text-ink";
 }
 
+function riskTone(value: number) {
+  if (value >= 70) {
+    return "border-coral/30 bg-coral/15 text-ink";
+  }
+  if (value <= 40) {
+    return "border-mint/30 bg-mint/15 text-ink";
+  }
+  return "border-gold/30 bg-gold/15 text-ink";
+}
+
 function heatColor(value: number) {
   if (value >= 75) return "bg-emerald-700 text-white";
   if (value >= 65) return "bg-emerald-600 text-white";
@@ -228,15 +238,19 @@ function TopStocks({ stocks }: { stocks: StockScore[] }) {
                     <div className="mt-1 font-black text-ink">{stock.volumeRatio.toFixed(2)}x</div>
                   </div>
                   <div className="rounded bg-white p-2">
-                    <div className="font-semibold text-ink/50">Setup</div>
-                    <div className="mt-1 font-black text-ink">{score(stock.setupQualityScore)}</div>
+                    <div className="font-semibold text-ink/50">Confidence</div>
+                    <div className="mt-1 font-black text-ink">{score(stock.confidenceScore)}</div>
                   </div>
                   <div className="rounded bg-white p-2">
-                    <div className="font-semibold text-ink/50">Attention</div>
-                    <div className="mt-1 font-black text-ink">{score(stock.attentionScore)}</div>
+                    <div className="font-semibold text-ink/50">Risk</div>
+                    <div className="mt-1 font-black text-ink">{score(stock.riskScore)}</div>
                   </div>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-ink/65">{stock.researchNote}</p>
+                <div className="mt-3 rounded bg-white p-2">
+                  <div className="text-xs font-black uppercase text-ink/45">Why In Focus</div>
+                  <p className="mt-1 text-xs leading-5 text-ink/65">{stock.whyInFocus}</p>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-coral">{stock.riskNote}</p>
               </article>
             ))}
           </div>
@@ -249,7 +263,8 @@ function TopStocks({ stocks }: { stocks: StockScore[] }) {
                 <th className="px-3 py-3">Score</th>
                 <th className="hidden px-3 py-3 sm:table-cell">Move</th>
                 <th className="hidden px-3 py-3 md:table-cell">Volume</th>
-                <th className="hidden px-3 py-3 lg:table-cell">Setup</th>
+                <th className="hidden px-3 py-3 lg:table-cell">Confidence</th>
+                <th className="hidden px-3 py-3 lg:table-cell">Risk</th>
                 <th className="hidden px-3 py-3 xl:table-cell">Why In Focus</th>
               </tr>
             </thead>
@@ -269,11 +284,14 @@ function TopStocks({ stocks }: { stocks: StockScore[] }) {
                   </td>
                   <td className="hidden px-3 py-3 md:table-cell">{stock.volumeRatio.toFixed(2)}x</td>
                   <td className="hidden px-3 py-3 lg:table-cell">
-                    <div className="font-bold">{score(stock.setupQualityScore)}</div>
-                    <div className="text-xs text-ink/55">{stock.setupDirection}</div>
+                    <span className={`rounded-md border px-2 py-1 font-bold ${scoreTone(stock.confidenceScore)}`}>{score(stock.confidenceScore)}</span>
+                  </td>
+                  <td className="hidden px-3 py-3 lg:table-cell">
+                    <span className={`rounded-md border px-2 py-1 font-bold ${riskTone(stock.riskScore)}`}>{score(stock.riskScore)}</span>
                   </td>
                   <td className="hidden max-w-sm px-3 py-3 text-xs leading-5 text-ink/65 xl:table-cell">
-                    {stock.researchNote}
+                    <div>{stock.whyInFocus}</div>
+                    <div className="mt-1 text-coral">{stock.riskNote}</div>
                   </td>
                 </tr>
               ))}
@@ -300,6 +318,14 @@ function OptionStrikeRow({ candidate }: { candidate: OptionStrikeCandidate }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded bg-paper p-2">
+          <div className="font-semibold text-ink/50">Confidence</div>
+          <div className="mt-1 font-black text-ink">{score(candidate.confidenceScore)}</div>
+        </div>
+        <div className="rounded bg-paper p-2">
+          <div className="font-semibold text-ink/50">Risk</div>
+          <div className="mt-1 font-black text-ink">{score(candidate.riskScore)}</div>
+        </div>
+        <div className="rounded bg-paper p-2">
           <div className="font-semibold text-ink/50">OI</div>
           <div className="mt-1 font-black text-ink">{numberLabel(candidate.openInterest)}</div>
         </div>
@@ -316,7 +342,11 @@ function OptionStrikeRow({ candidate }: { candidate: OptionStrikeCandidate }) {
           <div className="mt-1 font-black text-ink">{candidate.impliedVolatility.toFixed(2)}</div>
         </div>
       </div>
-      <p className="mt-3 text-xs leading-5 text-ink/65">{candidate.reason}</p>
+      <div className="mt-3 rounded bg-paper p-2">
+        <div className="text-xs font-black uppercase text-ink/45">Why In Focus</div>
+        <p className="mt-1 text-xs leading-5 text-ink/65">{candidate.whyInFocus || candidate.reason}</p>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-ink/60">{candidate.marketContext}</p>
       <p className="mt-2 text-xs leading-5 text-coral">{candidate.riskNote}</p>
     </div>
   );

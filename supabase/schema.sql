@@ -71,7 +71,11 @@ create table if not exists public.stock_scores (
   resistance_zone_low numeric(12, 2) not null default 0,
   resistance_zone_high numeric(12, 2) not null default 0,
   historical_edge_score numeric(6, 2) not null default 0,
+  confidence_score numeric(6, 2) not null default 0,
+  risk_score numeric(6, 2) not null default 50,
+  why_in_focus text not null default 'Research-only focus context unavailable.',
   risk_note text not null default 'Research-only risk context.',
+  market_context text not null default 'Research-only market context unavailable.',
   catalyst_summary text not null default 'Catalyst tone unavailable.',
   research_note text not null,
   created_at timestamptz not null default now()
@@ -148,6 +152,7 @@ create table if not exists public.realtime_worker_health (
 create index if not exists sector_scores_report_idx on public.sector_scores(report_id, rank);
 create index if not exists stock_scores_report_idx on public.stock_scores(report_id, rank);
 create index if not exists stock_scores_symbol_idx on public.stock_scores(symbol, report_date desc);
+create index if not exists stock_scores_trade_intelligence_idx on public.stock_scores(confidence_score desc, risk_score asc, attention_score desc);
 create index if not exists notification_history_priority_idx on public.notification_history(priority, triggered_at desc);
 create index if not exists notification_history_report_idx on public.notification_history(report_id);
 create index if not exists watchlist_stocks_health_idx on public.watchlist_stocks(health_score desc);

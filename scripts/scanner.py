@@ -22,6 +22,7 @@ from scanner.alerts import MarketAlert, generate_alerts
 from scanner.catalysts import CatalystSummary, fetch_market_catalysts
 from scanner.options_chain import build_options_research
 from scanner.universe import INDEX_SYMBOLS, SECTOR_INDICES, STOCK_UNIVERSE
+from scanner.trade_intelligence import enrich_options_research, enrich_stock_candidates, news_risk_from_catalysts
 
 load_dotenv(PROJECT_ROOT / ".env.local", encoding="utf-8-sig")
 load_dotenv(PROJECT_ROOT / ".env", encoding="utf-8-sig")
@@ -65,7 +66,7 @@ def build_report(
     session: str,
     mood: MarketMoodResult,
     sector_scores: list[SectorScore],
-    stock_scores: list[StockScore],
+    stock_scores: list[dict[str, Any]],
     catalysts: CatalystSummary,
     options_research: list[dict[str, object]],
 ) -> dict[str, Any]:
@@ -74,14 +75,14 @@ def build_report(
     extreme_alerts = [
         _stock_focus_payload(row)
         for row in stock_scores
-        if abs(row.one_day_change_percent) >= 4 or row.volume_ratio >= 2 or row.breakout_score >= 75
+        if abs(row["one_day_change_percent"]) >= 4 or row["volume_ratio"] >= 2 or row["breakout_score"] >= 75
     ][:10]
     watchlist = [
         {
-            "symbol": row.symbol,
-            "name": row.name,
-            "changePercent": row.one_day_change_percent,
-            "note": row.research_note,
+            "symbol": row["symbol"],
+            "name": row["name"],
+            "changePercent": row["one_day_change_percent"],
+            "note": row["market_context"],
         }
         for row in stock_scores[:10]
     ]
@@ -104,30 +105,35 @@ def build_report(
     }
 
 
-def _stock_focus_payload(row: StockScore) -> dict[str, Any]:
+def _stock_focus_payload(row: StockScore | dict[str, Any]) -> dict[str, Any]:
+    value = row.to_dict() if isinstance(row, StockScore) else row
     return {
-        "symbol": row.symbol,
-        "name": row.name,
-        "sector": row.sector,
-        "changePercent": row.one_day_change_percent,
-        "volumeRatio": row.volume_ratio,
-        "totalScore": row.total_score,
-        "relativeStrengthScore": row.relative_strength_score,
-        "breakoutScore": row.breakout_score,
-        "trendStrengthScore": row.trend_strength_score,
-        "newsImpactScore": row.news_impact_score,
-        "attentionScore": row.attention_score,
-        "setupQualityScore": row.setup_quality_score,
-        "setupDirection": row.setup_direction,
-        "referencePrice": row.reference_price,
-        "supportZoneLow": row.support_zone_low,
-        "supportZoneHigh": row.support_zone_high,
-        "resistanceZoneLow": row.resistance_zone_low,
-        "resistanceZoneHigh": row.resistance_zone_high,
-        "historicalEdgeScore": row.historical_edge_score,
-        "riskNote": row.risk_note,
-        "catalystSummary": row.catalyst_summary,
-        "reason": row.research_note,
+        "symbol": value["symbol"],
+        "name": value["name"],
+        "sector": value["sector"],
+        "changePercent": value["one_day_change_percent"],
+        "volumeRatio": value["volume_ratio"],
+        "totalScore": value["total_score"],
+        "relativeStrengthScore": value["relative_strength_score"],
+        "breakoutScore": value["breakout_score"],
+        "trendStrengthScore": value["trend_strength_score"],
+        "newsImpactScore": value["news_impact_score"],
+        "attentionScore": value["attention_score"],
+        "setupQualityScore": value["setup_quality_score"],
+        "setupDirection": value["setup_direction"],
+        "referencePrice": value["reference_price"],
+        "supportZoneLow": value["support_zone_low"],
+        "supportZoneHigh": value["support_zone_high"],
+        "resistanceZoneLow": value["resistance_zone_low"],
+        "resistanceZoneHigh": value["resistance_zone_high"],
+        "historicalEdgeScore": value["historical_edge_score"],
+        "confidenceScore": value.get("confidence_score", value["total_score"]),
+        "riskScore": value.get("risk_score", 50),
+        "riskNote": value.get("risk_note", "Research-only risk context."),
+        "whyInFocus": value.get("why_in_focus", value["research_note"]),
+        "marketContext": value.get("market_context", "Research-only market context."),
+        "catalystSummary": value["catalyst_summary"],
+        "reason": value.get("why_in_focus", value["research_note"]),
     }
 
 
@@ -135,7 +141,7 @@ def save_market_intelligence(
     report: dict[str, Any],
     mood: MarketMoodResult,
     sector_scores: list[SectorScore],
-    stock_scores: list[StockScore],
+    stock_scores: list[dict[str, Any]],
     alerts: list[MarketAlert],
 ) -> tuple[str, list[dict[str, Any]]]:
     report_id = save_report(report, mood)
@@ -179,43 +185,47 @@ def save_sector_scores(report_id: str, report: dict[str, Any], rows: list[Sector
     supabase_post("sector_scores", payload)
 
 
-def save_stock_scores(report_id: str, report: dict[str, Any], rows: list[StockScore]) -> None:
+def save_stock_scores(report_id: str, report: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     payload = [
         {
             "report_id": report_id,
             "report_date": report["report_date"],
             "session": report["session"],
-            "rank": row.rank,
-            "symbol": row.symbol,
-            "name": row.name,
-            "sector": row.sector,
-            "total_score": row.total_score,
-            "relative_strength_score": row.relative_strength_score,
-            "volume_spike_score": row.volume_spike_score,
-            "breakout_score": row.breakout_score,
-            "trend_strength_score": row.trend_strength_score,
-            "news_impact_score": row.news_impact_score,
-            "one_day_change_percent": row.one_day_change_percent,
-            "five_day_change_percent": row.five_day_change_percent,
-            "twenty_day_change_percent": row.twenty_day_change_percent,
-            "volume_ratio": row.volume_ratio,
-            "breakout_percent": row.breakout_percent,
-            "attention_score": row.attention_score,
-            "setup_quality_score": row.setup_quality_score,
-            "setup_direction": row.setup_direction,
-            "reference_price": row.reference_price,
-            "support_zone_low": row.support_zone_low,
-            "support_zone_high": row.support_zone_high,
-            "resistance_zone_low": row.resistance_zone_low,
-            "resistance_zone_high": row.resistance_zone_high,
-            "historical_edge_score": row.historical_edge_score,
-            "risk_note": row.risk_note,
-            "catalyst_summary": row.catalyst_summary,
-            "research_note": row.research_note,
+            "rank": row["rank"],
+            "symbol": row["symbol"],
+            "name": row["name"],
+            "sector": row["sector"],
+            "total_score": row["total_score"],
+            "relative_strength_score": row["relative_strength_score"],
+            "volume_spike_score": row["volume_spike_score"],
+            "breakout_score": row["breakout_score"],
+            "trend_strength_score": row["trend_strength_score"],
+            "news_impact_score": row["news_impact_score"],
+            "one_day_change_percent": row["one_day_change_percent"],
+            "five_day_change_percent": row["five_day_change_percent"],
+            "twenty_day_change_percent": row["twenty_day_change_percent"],
+            "volume_ratio": row["volume_ratio"],
+            "breakout_percent": row["breakout_percent"],
+            "attention_score": row["attention_score"],
+            "setup_quality_score": row["setup_quality_score"],
+            "setup_direction": row["setup_direction"],
+            "reference_price": row["reference_price"],
+            "support_zone_low": row["support_zone_low"],
+            "support_zone_high": row["support_zone_high"],
+            "resistance_zone_low": row["resistance_zone_low"],
+            "resistance_zone_high": row["resistance_zone_high"],
+            "historical_edge_score": row["historical_edge_score"],
+            "confidence_score": row["confidence_score"],
+            "risk_score": row["risk_score"],
+            "why_in_focus": row["why_in_focus"],
+            "risk_note": row["risk_note"],
+            "market_context": row["market_context"],
+            "catalyst_summary": row["catalyst_summary"],
+            "research_note": row["research_note"],
         }
         for row in rows
     ]
-    supabase_post("stock_scores", payload)
+    supabase_post("stock_scores", payload, allow_missing_trade_intelligence=True)
 
 
 def save_notification_history(report_id: str, alerts: list[MarketAlert]) -> list[dict[str, Any]]:
@@ -276,6 +286,7 @@ def supabase_post(
     prefer_return: bool = False,
     allow_conflict: bool = False,
     allow_missing_options_research: bool = False,
+    allow_missing_trade_intelligence: bool = False,
 ) -> requests.Response:
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise RuntimeError("Missing Supabase environment variables.")
@@ -294,6 +305,29 @@ def supabase_post(
     )
     if allow_conflict and response.status_code == 409:
         return response
+    if (
+        allow_missing_trade_intelligence
+        and table == "stock_scores"
+        and response.status_code in {400, 404}
+        and any(column in response.text for column in ["confidence_score", "risk_score", "why_in_focus", "market_context"])
+        and isinstance(payload, list)
+    ):
+        trade_columns = {"confidence_score", "risk_score", "why_in_focus", "market_context"}
+        fallback_payload = [{key: value for key, value in row.items() if key not in trade_columns} for row in payload]
+        print("Supabase trade intelligence columns are missing; saving stock scores without trade intelligence.")
+        fallback_response = requests.post(
+            f"{SUPABASE_URL}/rest/v1/{table}",
+            headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": prefer,
+            },
+            data=json.dumps(fallback_payload),
+            timeout=30,
+        )
+        fallback_response.raise_for_status()
+        return fallback_response
     if (
         allow_missing_options_research
         and table == "market_reports"
@@ -397,7 +431,9 @@ def main() -> None:
     )
     sector_scores = rank_sectors(sector_series, indices["nifty"])
     stock_scores = rank_stocks(stock_series, stock_metadata, indices["nifty"], limit=20, catalyst_score=catalysts.score)
-    options_research = build_options_research(mood)
+    news_risk_score = news_risk_from_catalysts(catalysts.score, catalysts.risk_flags)
+    enriched_stock_scores = enrich_stock_candidates(stock_scores, mood, sector_scores, news_risk_score)
+    options_research = enrich_options_research(build_options_research(mood), mood, news_risk_score)
     previous_market_mood = None if args.dry_run else get_previous_market_mood()
     alerts = generate_alerts(
         report_date=dt.date.today().isoformat(),
@@ -407,13 +443,13 @@ def main() -> None:
         stock_scores=stock_scores,
         previous_market_mood=previous_market_mood,
     )
-    report = build_report(args.session, mood, sector_scores, stock_scores, catalysts, options_research)
+    report = build_report(args.session, mood, sector_scores, enriched_stock_scores, catalysts, options_research)
 
     output = {
         "report": report,
         "market_mood_details": mood.to_dict(),
         "sector_scores": [row.to_dict() for row in sector_scores],
-        "stock_scores": [row.to_dict() for row in stock_scores],
+        "stock_scores": enriched_stock_scores,
         "alerts": [alert.to_dict() for alert in alerts],
         "catalysts": catalysts.to_dict(),
         "options_research": options_research,
@@ -421,7 +457,7 @@ def main() -> None:
     }
 
     if not args.dry_run:
-        report_id, inserted_alerts = save_market_intelligence(report, mood, sector_scores, stock_scores, alerts)
+        report_id, inserted_alerts = save_market_intelligence(report, mood, sector_scores, enriched_stock_scores, alerts)
         output["report_id"] = report_id
         output["new_notifications"] = len(inserted_alerts)
         if args.notify:

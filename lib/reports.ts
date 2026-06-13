@@ -96,6 +96,44 @@ const stockScoreSelect = [
   "resistance_zone_low",
   "resistance_zone_high",
   "historical_edge_score",
+  "confidence_score",
+  "risk_score",
+  "why_in_focus",
+  "risk_note",
+  "market_context",
+  "catalyst_summary",
+  "research_note"
+].join(",");
+
+const stockScoreSelectWithoutTradeIntelligence = [
+  "id",
+  "report_id",
+  "report_date",
+  "session",
+  "rank",
+  "symbol",
+  "name",
+  "sector",
+  "total_score",
+  "relative_strength_score",
+  "volume_spike_score",
+  "breakout_score",
+  "trend_strength_score",
+  "news_impact_score",
+  "one_day_change_percent",
+  "five_day_change_percent",
+  "twenty_day_change_percent",
+  "volume_ratio",
+  "breakout_percent",
+  "attention_score",
+  "setup_quality_score",
+  "setup_direction",
+  "reference_price",
+  "support_zone_low",
+  "support_zone_high",
+  "resistance_zone_low",
+  "resistance_zone_high",
+  "historical_edge_score",
   "risk_note",
   "catalyst_summary",
   "research_note"
@@ -165,7 +203,11 @@ type StockScoreRow = {
   resistance_zone_low?: number | string;
   resistance_zone_high?: number | string;
   historical_edge_score?: number | string;
+  confidence_score?: number | string;
+  risk_score?: number | string;
+  why_in_focus?: string;
   risk_note?: string;
+  market_context?: string;
   catalyst_summary?: string;
   research_note: string;
 };
@@ -237,6 +279,11 @@ function mapOptionCandidate(candidate: Record<string, unknown>): OptionStrikeCan
     impliedVolatility: numberValue(candidate.implied_volatility || candidate.impliedVolatility),
     distanceFromSpotPercent: numberValue(candidate.distance_from_spot_percent || candidate.distanceFromSpotPercent),
     score: numberValue(candidate.score),
+    confidenceScore: numberValue(candidate.confidence_score || candidate.confidenceScore || candidate.score),
+    riskScore: numberValue(candidate.risk_score || candidate.riskScore, 50),
+    attentionScore: numberValue(candidate.attention_score || candidate.attentionScore || candidate.score),
+    whyInFocus: stringValue(candidate.why_in_focus || candidate.whyInFocus || candidate.reason),
+    marketContext: stringValue(candidate.market_context || candidate.marketContext, "Research-only option market context."),
     reason: stringValue(candidate.reason),
     riskNote: stringValue(candidate.risk_note || candidate.riskNote)
   };
@@ -318,6 +365,10 @@ function mapStockScore(row: StockScoreRow): StockScore {
     resistanceZoneLow: numberValue(row.resistance_zone_low),
     resistanceZoneHigh: numberValue(row.resistance_zone_high),
     historicalEdgeScore: numberValue(row.historical_edge_score),
+    confidenceScore: numberValue(row.confidence_score, numberValue(row.total_score)),
+    riskScore: numberValue(row.risk_score, 50),
+    whyInFocus: row.why_in_focus ?? row.research_note,
+    marketContext: row.market_context ?? "Research-only market context.",
     riskNote: row.risk_note ?? "Research-only risk context.",
     catalystSummary: row.catalyst_summary ?? "Catalyst tone unavailable.",
     researchNote: row.research_note
@@ -366,6 +417,17 @@ function isMissingOptionsResearchColumn(error: { message?: string; code?: string
     error &&
       (error.message?.includes("options_research") ||
         error.message?.includes("market_reports.options_research") ||
+        error.code === "PGRST204")
+  );
+}
+
+function isMissingTradeIntelligenceColumn(error: { message?: string; code?: string } | null) {
+  return Boolean(
+    error &&
+      (error.message?.includes("confidence_score") ||
+        error.message?.includes("risk_score") ||
+        error.message?.includes("why_in_focus") ||
+        error.message?.includes("market_context") ||
         error.code === "PGRST204")
   );
 }
@@ -443,7 +505,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     throw new Error(sectorResponse.error.message);
   }
 
-  if (stockResponse.error) {
+  let stockRows = stockResponse.data;
+  if (isMissingTradeIntelligenceColumn(stockResponse.error)) {
+    const fallbackStockResponse = await supabase
+      .from("stock_scores")
+      .select(stockScoreSelectWithoutTradeIntelligence)
+      .eq("report_id", reportId)
+      .order("rank", { ascending: true })
+      .limit(20);
+    if (fallbackStockResponse.error) {
+      throw new Error(fallbackStockResponse.error.message);
+    }
+    stockRows = fallbackStockResponse.data;
+  } else if (stockResponse.error) {
     throw new Error(stockResponse.error.message);
   }
 
@@ -454,7 +528,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     report,
     sectorScores: ((sectorResponse.data ?? []) as unknown as SectorScoreRow[]).map(mapSectorScore),
-    stockScores: ((stockResponse.data ?? []) as unknown as StockScoreRow[]).map(mapStockScore),
+    stockScores: ((stockRows ?? []) as unknown as StockScoreRow[]).map(mapStockScore),
     recentReports: ((recentReportsResponse.data ?? []) as unknown as ReportRow[]).map(mapReportSummary)
   };
 }

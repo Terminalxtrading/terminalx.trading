@@ -47,6 +47,7 @@ supabase/migrations/003_watchlist_engine.sql
 supabase/migrations/004_intraday_catalyst_setup.sql
 supabase/migrations/005_options_research.sql
 supabase/migrations/006_realtime_worker.sql
+supabase/migrations/007_trade_intelligence.sql
 ```
 
 Also confirm RLS policies exist for service role operations.

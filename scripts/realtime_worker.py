@@ -22,6 +22,7 @@ from scanner.market_mood import MarketMoodResult, calculate_market_mood
 from scanner.options_chain import build_options_research
 from scanner.sector_strength import SectorScore, rank_sectors
 from scanner.stock_ranking import StockScore, rank_stocks
+from scanner.trade_intelligence import enrich_options_research, enrich_stock_candidates
 from scanner.universe import INDEX_SYMBOLS, SECTOR_INDICES, STOCK_UNIVERSE
 
 load_dotenv(PROJECT_ROOT / ".env.local", encoding="utf-8-sig")
@@ -204,36 +205,44 @@ def sector_rotation_payload(rows: list[SectorScore]) -> list[dict[str, Any]]:
     ]
 
 
-def attention_payload(rows: list[StockScore]) -> list[dict[str, Any]]:
+def attention_payload(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
-            "rank": row.rank,
-            "symbol": row.symbol,
-            "name": row.name,
-            "sector": row.sector,
-            "attentionScore": row.attention_score,
-            "setupQualityScore": row.setup_quality_score,
-            "changePercent": row.one_day_change_percent,
-            "volumeRatio": row.volume_ratio,
-            "reason": row.research_note,
+            "rank": row["rank"],
+            "symbol": row["symbol"],
+            "name": row["name"],
+            "sector": row["sector"],
+            "confidenceScore": row["confidence_score"],
+            "riskScore": row["risk_score"],
+            "attentionScore": row["attention_score"],
+            "setupQualityScore": row["setup_quality_score"],
+            "changePercent": row["one_day_change_percent"],
+            "volumeRatio": row["volume_ratio"],
+            "whyInFocus": row["why_in_focus"],
+            "riskNote": row["risk_note"],
+            "marketContext": row["market_context"],
+            "reason": row["why_in_focus"],
         }
         for row in rows[:20]
     ]
 
 
-def watchlist_payload(rows: list[StockScore]) -> list[dict[str, Any]]:
+def watchlist_payload(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
-            "symbol": row.symbol,
-            "name": row.name,
-            "attentionScore": row.attention_score,
-            "setupQualityScore": row.setup_quality_score,
-            "changePercent": row.one_day_change_percent,
-            "volumeRatio": row.volume_ratio,
-            "riskNote": row.risk_note,
+            "symbol": row["symbol"],
+            "name": row["name"],
+            "confidenceScore": row["confidence_score"],
+            "riskScore": row["risk_score"],
+            "attentionScore": row["attention_score"],
+            "setupQualityScore": row["setup_quality_score"],
+            "changePercent": row["one_day_change_percent"],
+            "volumeRatio": row["volume_ratio"],
+            "riskNote": row["risk_note"],
+            "whyInFocus": row["why_in_focus"],
         }
         for row in rows
-        if row.sector == "Watchlist"
+        if row["sector"] == "Watchlist"
     ]
 
 
@@ -312,8 +321,8 @@ def build_snapshot() -> dict[str, Any]:
     )
     market_bias = calculate_market_bias(mood)
     sectors = rank_sectors(sector_series, indices["nifty"])
-    stocks = rank_stocks(stock_series, metadata, indices["nifty"], limit=30)
-    options = build_options_research(mood)
+    stocks = enrich_stock_candidates(rank_stocks(stock_series, metadata, indices["nifty"], limit=30), mood, sectors, news_risk_score=50)
+    options = enrich_options_research(build_options_research(mood), mood, news_risk_score=50)
     breadth = calculate_market_breadth(list(stock_series.values()))
     potential = option_strike_potential(options)
     oi_buildup = oi_buildup_payload(options)
