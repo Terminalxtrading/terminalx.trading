@@ -6,11 +6,6 @@ export const metadata: Metadata = {
   title: "TerminalX.Trading",
   description: "Research-only Indian stock market focus reports and movement alerts.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "TerminalX"
-  },
   applicationName: "TerminalX.Trading",
   formatDetection: {
     telephone: false
