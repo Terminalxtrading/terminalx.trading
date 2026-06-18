@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { buildPreMarketBrief, getPreMarketBriefStatus, getPreMarketStaleMessage } from "@/lib/pre-market-brief";
 import type { CatalystSummary, DashboardData, DashboardReportSummary, IndexOptionResearch, LivePriceItem, MarketMoodDetails, MarketReport, OptionStrikeCandidate, ReportSession, SectorScore, StockScore } from "@/lib/types";
 
 type ReportRow = {
@@ -456,42 +457,18 @@ function mapReportSummary(row: ReportRow): DashboardReportSummary {
   };
 }
 
-function latestExpectedTradingDate(now = new Date()) {
-  const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
-  const date = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
-  const istMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
-  const day = date.getUTCDay();
-
-  if (day === 0) {
-    date.setUTCDate(date.getUTCDate() - 2);
-  } else if (day === 6) {
-    date.setUTCDate(date.getUTCDate() - 1);
-  } else if (istMinutes < 9 * 60 + 30) {
-    date.setUTCDate(date.getUTCDate() - 1);
-    while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
-      date.setUTCDate(date.getUTCDate() - 1);
-    }
-  }
-
-  return date.toISOString().slice(0, 10);
-}
-
 function getReportStalenessMessage(report: MarketReport) {
   if (process.env.ALLOW_STALE_MARKET_REPORTS === "true") {
     return undefined;
   }
 
-  const expectedDate = latestExpectedTradingDate();
-  if (report.reportDate < expectedDate) {
-    return `Latest market report is stale (${report.reportDate}). Scheduled automation should refresh it for ${expectedDate}; if it does not, check the Market Scanner workflow and secrets.`;
-  }
-
-  return undefined;
+  return getPreMarketStaleMessage(report);
 }
 
 function assertReportIsCurrent(report: MarketReport) {
-  const staleMessage = getReportStalenessMessage(report);
-  if (staleMessage) {
+  const status = getPreMarketBriefStatus(report);
+  if (status === "stale" || status === "waiting") {
+    const staleMessage = getReportStalenessMessage(report) ?? "Latest market report is not current.";
     throw new Error(staleMessage);
   }
 }
@@ -576,7 +553,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   const report = mapReportRow(latestReport as unknown as ReportRow);
-  const staleMessage = getReportStalenessMessage(report);
   const reportId = report.id;
 
   const [sectorResponse, stockResponse, recentReportsResponse] = await Promise.all([
@@ -616,15 +592,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     .limit(1)
     .maybeSingle();
 
+  const mappedSectors = ((sectorResponse.data ?? []) as unknown as SectorScoreRow[]).map(mapSectorScore);
   const mappedStocks = ((stockRows ?? []) as unknown as StockScoreRow[]).map(mapStockScore);
+  const preMarketBrief = buildPreMarketBrief(report, mappedSectors);
+  const staleMessage = getReportStalenessMessage(report);
 
   return {
     report,
-    sectorScores: ((sectorResponse.data ?? []) as unknown as SectorScoreRow[]).map(mapSectorScore),
+    sectorScores: mappedSectors,
     stockScores: mappedStocks,
     recentReports: ((recentReportsResponse.data ?? []) as unknown as ReportRow[]).map(mapReportSummary),
     livePrices: buildLivePrices(report, mappedStocks, realtimeSnapshot as RealtimeSnapshotRow | null),
     liveUpdatedAt: (realtimeSnapshot as RealtimeSnapshotRow | null)?.snapshot_at ?? report.createdAt,
-    staleMessage
+    staleMessage,
+    preMarketBrief
   };
 }

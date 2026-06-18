@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PushButton } from "@/components/push-button";
-import type { DashboardData, DashboardReportSummary, IndexOptionResearch, LivePriceItem, OptionStrikeCandidate, SectorScore, StockFocus, StockScore } from "@/lib/types";
+import type { DashboardData, DashboardReportSummary, IndexOptionResearch, LivePriceItem, OptionStrikeCandidate, PreMarketBrief, SectorScore, StockFocus, StockScore } from "@/lib/types";
 
 const MARKET_TIME_ZONE = "Asia/Kolkata";
 const DASHBOARD_REFRESH_MS = 30_000;
@@ -92,6 +92,36 @@ function riskTone(value: number) {
     return "border-mint/30 bg-mint/15 text-ink";
   }
   return "border-gold/30 bg-gold/15 text-ink";
+}
+
+function sideTone(side: PreMarketBrief["preferredSide"]) {
+  if (side === "CALL") {
+    return "border-mint/35 bg-mint/15 text-mint";
+  }
+  if (side === "PUT") {
+    return "border-coral/35 bg-coral/15 text-coral";
+  }
+  return "border-gold/35 bg-gold/15 text-gold";
+}
+
+function statusTone(status: PreMarketBrief["status"]) {
+  if (status === "current") {
+    return "border-mint/35 bg-mint/15 text-mint";
+  }
+  if (status === "waiting") {
+    return "border-gold/35 bg-gold/15 text-gold";
+  }
+  return "border-coral/35 bg-coral/15 text-coral";
+}
+
+function riskLevelTone(riskLevel: PreMarketBrief["riskLevel"]) {
+  if (riskLevel === "Low") {
+    return "border-mint/35 bg-mint/15 text-mint";
+  }
+  if (riskLevel === "High") {
+    return "border-coral/35 bg-coral/15 text-coral";
+  }
+  return "border-gold/35 bg-gold/15 text-gold";
 }
 
 function heatColor(value: number) {
@@ -448,6 +478,147 @@ function WarningState({ message }: { message: string }) {
   );
 }
 
+function IdeaMiniCard({ candidate }: { candidate: OptionStrikeCandidate }) {
+  return (
+    <div className="rounded-md border border-ink/10 bg-white p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-xs font-black uppercase text-ink/45">{candidate.index}</div>
+          <div className="mt-1 text-sm font-black text-ink">
+            {candidate.optionType} {numberLabel(candidate.strike)}
+          </div>
+        </div>
+        <span className={`rounded-md border px-2 py-1 text-xs font-bold ${scoreTone(candidate.score)}`}>{score(candidate.score)}</span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+        <div className="rounded bg-paper px-2 py-1">
+          <div className="font-semibold text-ink/45">Conf</div>
+          <div className="font-black text-ink">{score(candidate.confidenceScore)}</div>
+        </div>
+        <div className="rounded bg-paper px-2 py-1">
+          <div className="font-semibold text-ink/45">Risk</div>
+          <div className="font-black text-ink">{score(candidate.riskScore)}</div>
+        </div>
+        <div className="rounded bg-paper px-2 py-1">
+          <div className="font-semibold text-ink/45">Spot Gap</div>
+          <div className="font-black text-ink">{candidate.distanceFromSpotPercent.toFixed(1)}%</div>
+        </div>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-ink/65">{candidate.reason || candidate.whyInFocus}</p>
+    </div>
+  );
+}
+
+function PreMarketDecisionBrief({ brief }: { brief: PreMarketBrief }) {
+  return (
+    <Card className="border-ink/20">
+      <WidgetTitle
+        icon={<Gauge className="size-5 text-ink" />}
+        title="Pre-Market Decision Brief"
+        aside={
+          <span className={`rounded-md border px-2.5 py-1 text-xs font-black uppercase ${statusTone(brief.status)}`}>
+            {brief.status === "waiting" ? "WAITING FOR MORNING SCAN" : brief.status}
+          </span>
+        }
+      />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-md bg-paper p-3">
+          <div className="text-xs font-semibold uppercase text-ink/50">Report Date</div>
+          <div className="mt-1 text-lg font-black text-ink">{brief.reportDate}</div>
+          <div className="mt-1 text-xs text-ink/55 capitalize">{brief.session} session</div>
+        </div>
+        <div className="rounded-md bg-paper p-3">
+          <div className="text-xs font-semibold uppercase text-ink/50">Market Bias</div>
+          <div className="mt-1 text-lg font-black text-ink">{brief.marketBias}</div>
+          <div className="mt-1 text-xs text-ink/55">Research-only directional context</div>
+        </div>
+        <div className="rounded-md bg-paper p-3">
+          <div className="text-xs font-semibold uppercase text-ink/50">Preferred Side</div>
+          <div className="mt-2">
+            <span className={`rounded-md border px-3 py-1.5 text-base font-black ${sideTone(brief.preferredSide)}`}>{brief.preferredSide}</span>
+          </div>
+          <div className="mt-2 text-xs text-ink/55">Decision support, not guaranteed profit</div>
+        </div>
+        <div className="rounded-md bg-paper p-3">
+          <div className="text-xs font-semibold uppercase text-ink/50">Confidence / Risk</div>
+          <div className="mt-1 text-lg font-black text-ink">{score(brief.confidenceScore)}/100</div>
+          <div className="mt-2 flex gap-2">
+            <span className={`rounded-md border px-2 py-1 text-xs font-bold ${riskLevelTone(brief.riskLevel)}`}>{brief.riskLevel} risk</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-md bg-paper p-3">
+        <div className="text-xs font-black uppercase text-ink/45">Main Reason</div>
+        <p className="mt-2 text-sm leading-6 text-ink/75">{brief.summary}</p>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 text-xs font-black uppercase text-ink/45">Decision Reasons</div>
+            <div className="flex flex-wrap gap-2">
+              {brief.reasons.map((reason) => (
+                <span key={reason} className="rounded-md border border-ink/10 bg-white px-3 py-2 text-xs leading-5 text-ink/75">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 text-xs font-black uppercase text-mint">Top 3 CALL Ideas</div>
+              <div className="space-y-3">
+                {brief.callIdeas.length > 0 ? brief.callIdeas.map((candidate) => <IdeaMiniCard key={`call-${candidate.index}-${candidate.strike}`} candidate={candidate} />) : <EmptyState text="No CALL-side ideas are strong enough yet." />}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-black uppercase text-coral">Top 3 PUT Ideas</div>
+              <div className="space-y-3">
+                {brief.putIdeas.length > 0 ? brief.putIdeas.map((candidate) => <IdeaMiniCard key={`put-${candidate.index}-${candidate.strike}`} candidate={candidate} />) : <EmptyState text="No PUT-side ideas are strong enough yet." />}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="rounded-md bg-paper p-3">
+            <div className="text-xs font-black uppercase text-ink/45">Top Sectors In Focus</div>
+            <div className="mt-3 space-y-2">
+              {brief.topSectors.length > 0 ? (
+                brief.topSectors.map((sector) => (
+                  <div key={sector.sector} className="flex items-center justify-between gap-3 rounded bg-white px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-ink">{sector.sector}</div>
+                      <div className="text-xs text-ink/55">Trend {score(sector.trendScore)} / RS {score(sector.relativeStrengthScore)}</div>
+                    </div>
+                    <span className={`rounded-md border px-2 py-1 text-xs font-bold ${scoreTone(sector.sectorScore)}`}>{score(sector.sectorScore)}</span>
+                  </div>
+                ))
+              ) : (
+                <EmptyState text="Sector leadership is unavailable." />
+              )}
+            </div>
+          </div>
+          <div className="rounded-md bg-paper p-3">
+            <div className="text-xs font-black uppercase text-ink/45">Key Risk Warnings</div>
+            <div className="mt-3 space-y-2">
+              {brief.warnings.length > 0 ? (
+                brief.warnings.map((warning) => (
+                  <div key={warning} className="rounded bg-white px-3 py-2 text-xs leading-5 text-coral">
+                    {warning}
+                  </div>
+                ))
+              ) : (
+                <EmptyState text="No major risk warning is blocking the pre-market read." />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function defaultOptionTab(item: IndexOptionResearch): "CALL" | "PUT" {
   if (item.calls.length > 0) {
     return "CALL";
@@ -786,6 +957,7 @@ export function Dashboard() {
           </div>
 
           {data.staleMessage ? <WarningState message={data.staleMessage} /> : null}
+          <PreMarketDecisionBrief brief={data.preMarketBrief} />
 
           <div id="market" className="grid scroll-mt-4 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             <OverviewCard label="Nifty" value={numberLabel(details?.niftyValue)} change={details?.niftyChangePercent} icon={<TrendingUp className="size-4 text-mint" />} />

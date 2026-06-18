@@ -58,20 +58,31 @@ jobs:
         run: |
           SESSION="${{ github.event.inputs.session }}"
           if [ -z "$SESSION" ]; then
-            IST_HOUR="$(TZ=Asia/Kolkata date +%H)"
-            IST_MINUTE="$(TZ=Asia/Kolkata date +%M)"
-            IST_TOTAL_MINUTES=$((10#$IST_HOUR * 60 + 10#$IST_MINUTE))
-
-            if [ "$IST_TOTAL_MINUTES" -lt 560 ]; then
+            if [ "${{ github.event.schedule }}" = "0 3 * * 1-5" ] || [ "${{ github.event.schedule }}" = "15 3 * * 1-5" ] || [ "${{ github.event.schedule }}" = "35 3 * * 1-5" ]; then
               SESSION="morning"
-            elif [ "$IST_TOTAL_MINUTES" -ge 720 ] && [ "$IST_TOTAL_MINUTES" -lt 780 ]; then
-              SESSION="midday"
-            elif [ "$IST_TOTAL_MINUTES" -ge 935 ]; then
-              SESSION="closing"
             else
-              SESSION="intraday"
+              IST_HOUR="$(TZ=Asia/Kolkata date +%H)"
+              IST_MINUTE="$(TZ=Asia/Kolkata date +%M)"
+              IST_TOTAL_MINUTES=$((10#$IST_HOUR * 60 + 10#$IST_MINUTE))
+
+              if [ "$IST_TOTAL_MINUTES" -ge 720 ] && [ "$IST_TOTAL_MINUTES" -lt 780 ]; then
+                SESSION="midday"
+              elif [ "$IST_TOTAL_MINUTES" -ge 935 ]; then
+                SESSION="closing"
+              else
+                SESSION="intraday"
+              fi
             fi
           fi
 
+          if [ "$SESSION" = "morning" ]; then
+            echo "Running explicit pre-market morning scan before open."
+          elif [ "$SESSION" = "midday" ]; then
+            echo "Running midday scan."
+          elif [ "$SESSION" = "closing" ]; then
+            echo "Running closing scan."
+          else
+            echo "Running intraday scan."
+          fi
           echo "Running market scanner session: $SESSION"
           python scripts/scanner.py --session "$SESSION" --notify

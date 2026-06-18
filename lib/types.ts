@@ -184,6 +184,28 @@ export type DashboardReportSummary = {
   createdAt?: string;
 };
 
+export type PreMarketBriefStatus = "current" | "stale" | "waiting";
+
+export type PreferredSide = "CALL" | "PUT" | "WAIT";
+
+export type RiskLevel = "Low" | "Medium" | "High";
+
+export type PreMarketBrief = {
+  status: PreMarketBriefStatus;
+  reportDate: string;
+  session: ReportSession;
+  marketBias: MarketReport["marketMood"];
+  preferredSide: PreferredSide;
+  confidenceScore: number;
+  riskLevel: RiskLevel;
+  summary: string;
+  reasons: string[];
+  callIdeas: OptionStrikeCandidate[];
+  putIdeas: OptionStrikeCandidate[];
+  topSectors: SectorScore[];
+  warnings: string[];
+};
+
 export type DashboardData = {
   report: MarketReport;
   sectorScores: SectorScore[];
@@ -192,6 +214,7 @@ export type DashboardData = {
   livePrices: LivePriceItem[];
   liveUpdatedAt?: string;
   staleMessage?: string;
+  preMarketBrief: PreMarketBrief;
 };
 
 export type LivePriceItem = {
