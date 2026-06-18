@@ -14,7 +14,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PushButton } from "@/components/push-button";
 import type { DashboardData, DashboardReportSummary, IndexOptionResearch, LivePriceItem, OptionStrikeCandidate, SectorScore, StockFocus, StockScore } from "@/lib/types";
 
@@ -661,11 +661,17 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const dataRef = useRef<DashboardData | null>(null);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const loadDashboard = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background ?? false;
+    const hasData = Boolean(dataRef.current);
 
-    if (background && data) {
+    if (background && hasData) {
       setIsRefreshing(true);
     } else {
       setIsLoading(true);
@@ -685,14 +691,14 @@ export function Dashboard() {
 
       setData(payload as DashboardData);
     } catch (loadError) {
-      if (!background || !data) {
+      if (!background || !hasData) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard data.");
       }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [data]);
+  }, []);
 
   useEffect(() => {
     void loadDashboard();
