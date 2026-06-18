@@ -13,8 +13,9 @@ on:
           - intraday
           - closing
   schedule:
+    - cron: "0 3 * * 1-5"
     - cron: "15 3 * * 1-5"
-    - cron: "50 3 * * 1-5"
+    - cron: "35 3 * * 1-5"
     - cron: "5 4 * * 1-5"
     - cron: "50 4 * * 1-5"
     - cron: "30 5 * * 1-5"
@@ -24,6 +25,10 @@ on:
     - cron: "30 9 * * 1-5"
     - cron: "15 10 * * 1-5"
     - cron: "40 10 * * 1-5"
+
+concurrency:
+  group: market-scanner
+  cancel-in-progress: false
 
 jobs:
   scan:
@@ -53,14 +58,15 @@ jobs:
         run: |
           SESSION="${{ github.event.inputs.session }}"
           if [ -z "$SESSION" ]; then
-            HOUR_UTC="$(date -u +%H)"
-            MINUTE_UTC="$(date -u +%M)"
+            IST_HOUR="$(TZ=Asia/Kolkata date +%H)"
+            IST_MINUTE="$(TZ=Asia/Kolkata date +%M)"
+            IST_TOTAL_MINUTES=$((10#$IST_HOUR * 60 + 10#$IST_MINUTE))
 
-            if [ "$HOUR_UTC" = "03" ]; then
+            if [ "$IST_TOTAL_MINUTES" -lt 560 ]; then
               SESSION="morning"
-            elif [ "$HOUR_UTC" = "06" ] && [ "$MINUTE_UTC" -ge "20" ]; then
+            elif [ "$IST_TOTAL_MINUTES" -ge 720 ] && [ "$IST_TOTAL_MINUTES" -lt 780 ]; then
               SESSION="midday"
-            elif [ "$HOUR_UTC" = "10" ]; then
+            elif [ "$IST_TOTAL_MINUTES" -ge 935 ]; then
               SESSION="closing"
             else
               SESSION="intraday"

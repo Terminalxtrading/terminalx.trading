@@ -191,6 +191,7 @@ export type DashboardData = {
   recentReports: DashboardReportSummary[];
   livePrices: LivePriceItem[];
   liveUpdatedAt?: string;
+  staleMessage?: string;
 };
 
 export type LivePriceItem = {

@@ -476,16 +476,23 @@ function latestExpectedTradingDate(now = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-function assertReportIsCurrent(report: MarketReport) {
+function getReportStalenessMessage(report: MarketReport) {
   if (process.env.ALLOW_STALE_MARKET_REPORTS === "true") {
-    return;
+    return undefined;
   }
 
   const expectedDate = latestExpectedTradingDate();
   if (report.reportDate < expectedDate) {
-    throw new Error(
-      `Latest market report is stale (${report.reportDate}). Run the Market Scanner workflow for ${expectedDate} to show current data.`
-    );
+    return `Latest market report is stale (${report.reportDate}). Scheduled automation should refresh it for ${expectedDate}; if it does not, check the Market Scanner workflow and secrets.`;
+  }
+
+  return undefined;
+}
+
+function assertReportIsCurrent(report: MarketReport) {
+  const staleMessage = getReportStalenessMessage(report);
+  if (staleMessage) {
+    throw new Error(staleMessage);
   }
 }
 
@@ -569,7 +576,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   const report = mapReportRow(latestReport as unknown as ReportRow);
-  assertReportIsCurrent(report);
+  const staleMessage = getReportStalenessMessage(report);
   const reportId = report.id;
 
   const [sectorResponse, stockResponse, recentReportsResponse] = await Promise.all([
@@ -617,6 +624,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     stockScores: mappedStocks,
     recentReports: ((recentReportsResponse.data ?? []) as unknown as ReportRow[]).map(mapReportSummary),
     livePrices: buildLivePrices(report, mappedStocks, realtimeSnapshot as RealtimeSnapshotRow | null),
-    liveUpdatedAt: (realtimeSnapshot as RealtimeSnapshotRow | null)?.snapshot_at ?? report.createdAt
+    liveUpdatedAt: (realtimeSnapshot as RealtimeSnapshotRow | null)?.snapshot_at ?? report.createdAt,
+    staleMessage
   };
 }

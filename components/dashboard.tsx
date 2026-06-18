@@ -11,13 +11,15 @@ import {
   LineChart,
   Newspaper,
   RefreshCw,
-  TrendingDown,
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PushButton } from "@/components/push-button";
 import type { DashboardData, DashboardReportSummary, IndexOptionResearch, LivePriceItem, OptionStrikeCandidate, SectorScore, StockFocus, StockScore } from "@/lib/types";
+
+const MARKET_TIME_ZONE = "Asia/Kolkata";
+const DASHBOARD_REFRESH_MS = 30_000;
 
 function pct(value: number | undefined) {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -48,7 +50,28 @@ function timeLabel(value: string | undefined) {
   if (Number.isNaN(parsed.getTime())) {
     return "n/a";
   }
-  return parsed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  return parsed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: MARKET_TIME_ZONE });
+}
+
+function isMarketHours(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: MARKET_TIME_ZONE,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const weekday = values.weekday;
+  const hour = Number(values.hour);
+  const minute = Number(values.minute);
+
+  if (weekday === "Sat" || weekday === "Sun" || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return false;
+  }
+
+  const totalMinutes = hour * 60 + minute;
+  return totalMinutes >= 9 * 60 + 15 && totalMinutes <= 15 * 60 + 30;
 }
 
 function scoreTone(value: number) {
@@ -411,43 +434,73 @@ function OptionStrikeRow({ candidate }: { candidate: OptionStrikeCandidate }) {
   );
 }
 
+function WarningState({ message }: { message: string }) {
+  return (
+    <div className="rounded-md border border-gold/35 bg-gold/10 p-4 text-sm text-ink shadow-sm">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-gold" />
+        <div className="min-w-0">
+          <div className="font-bold text-ink">Automation is catching up</div>
+          <p className="mt-1 leading-6 text-ink/75">{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function defaultOptionTab(item: IndexOptionResearch): "CALL" | "PUT" {
+  if (item.calls.length > 0) {
+    return "CALL";
+  }
+  return "PUT";
+}
+
 function OptionsResearchPanel({ optionsResearch }: { optionsResearch: IndexOptionResearch[] }) {
-  const [activeTab, setActiveTab] = useState<"CALL" | "PUT">("CALL");
+  const [activeTabs, setActiveTabs] = useState<Record<string, "CALL" | "PUT">>({});
 
   return (
     <Card>
-      <WidgetTitle
-        icon={<Activity className="size-5 text-gold" />}
-        title="Call / Put Strike Research"
-        aside={
-          <div className="grid grid-cols-2 overflow-hidden rounded-md border border-ink/15 bg-paper p-0.5">
-            {(["CALL", "PUT"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`min-h-8 px-3 text-xs font-black ${activeTab === tab ? "rounded bg-ink text-white" : "text-ink/60 hover:text-ink"}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        }
-      />
+      <WidgetTitle icon={<Activity className="size-5 text-gold" />} title="Call / Put Strike Research" />
       {optionsResearch.length === 0 ? (
         <EmptyState text="No options research has been saved yet. Run the scanner after applying migration 005." />
       ) : (
         <div className="space-y-4">
-          {optionsResearch.map((item) => (
+          {optionsResearch.map((item) => {
+            const activeTab = activeTabs[item.index] ?? defaultOptionTab(item);
+            const visibleCandidates = activeTab === "CALL" ? item.calls : item.puts;
+
+            return (
             <article key={item.index} className="rounded-md border border-ink/10 bg-paper p-3">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+              <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                 <div>
                   <h3 className="text-base font-black text-ink">{item.index}</h3>
                   <p className="mt-1 text-xs leading-5 text-ink/60">{item.trendContext}</p>
                 </div>
-                <span className={`w-fit rounded-md border px-2.5 py-1 text-xs font-bold uppercase ${item.dataStatus === "ok" ? "border-mint/30 bg-mint/15 text-mint" : "border-coral/30 bg-coral/15 text-coral"}`}>
-                  {item.dataStatus}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`w-fit rounded-md border px-2.5 py-1 text-xs font-bold uppercase ${item.dataStatus === "ok" ? "border-mint/30 bg-mint/15 text-mint" : "border-coral/30 bg-coral/15 text-coral"}`}>
+                    {item.dataStatus}
+                  </span>
+                  {item.dataStatus === "ok" ? (
+                    <div className="grid grid-cols-2 overflow-hidden rounded-md border border-ink/15 bg-white p-0.5">
+                      {([
+                        { tab: "CALL" as const, count: item.calls.length },
+                        { tab: "PUT" as const, count: item.puts.length }
+                      ]).map(({ tab, count }) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setActiveTabs((current) => ({ ...current, [item.index]: tab }))}
+                          disabled={count === 0}
+                          className={`min-h-8 px-3 text-xs font-black ${
+                            activeTab === tab ? "rounded bg-ink text-white" : "text-ink/60 hover:text-ink"
+                          } ${count === 0 ? "cursor-not-allowed opacity-40" : ""}`}
+                        >
+                          {tab} {count}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               {item.dataStatus !== "ok" ? (
@@ -482,8 +535,8 @@ function OptionsResearchPanel({ optionsResearch }: { optionsResearch: IndexOptio
                       {activeTab === "CALL" ? "Call watch strikes" : "Put watch strikes"}
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {(activeTab === "CALL" ? item.calls : item.puts).length > 0 ? (
-                        (activeTab === "CALL" ? item.calls : item.puts).map((candidate) => (
+                      {visibleCandidates.length > 0 ? (
+                        visibleCandidates.map((candidate) => (
                           <OptionStrikeRow key={`${item.index}-${activeTab}-${candidate.strike}`} candidate={candidate} />
                         ))
                       ) : (
@@ -495,7 +548,7 @@ function OptionsResearchPanel({ optionsResearch }: { optionsResearch: IndexOptio
                 </>
               )}
             </article>
-          ))}
+          )})}
         </div>
       )}
     </Card>
@@ -607,10 +660,20 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const loadDashboard = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? false;
+
+    if (background && data) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    if (!background) {
+      setError(null);
+    }
 
     try {
       const response = await fetch("/api/dashboard", { cache: "no-store" });
@@ -622,11 +685,14 @@ export function Dashboard() {
 
       setData(payload as DashboardData);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard data.");
+      if (!background || !data) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard data.");
+      }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  }, []);
+  }, [data]);
 
   useEffect(() => {
     void loadDashboard();
@@ -634,9 +700,27 @@ export function Dashboard() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void loadDashboard();
-    }, 60_000);
+      if (document.visibilityState === "visible" && isMarketHours()) {
+        void loadDashboard({ background: true });
+      }
+    }, DASHBOARD_REFRESH_MS);
     return () => window.clearInterval(timer);
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadDashboard({ background: true });
+      }
+    };
+
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, [loadDashboard]);
 
   const sortedSectors = useMemo(
@@ -670,6 +754,8 @@ export function Dashboard() {
                 <span>{title}</span>
                 <span>·</span>
                 <span>{report.reportDate}</span>
+                <span>·</span>
+                <span>{isRefreshing ? "refreshing live" : `live ${timeLabel(data.liveUpdatedAt)}`}</span>
               </div>
               <h1 className="mt-2 text-2xl font-black leading-tight text-ink sm:text-4xl">TerminalX.Trading</h1>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-ink/70 sm:text-base">{report.summary}</p>
@@ -692,6 +778,8 @@ export function Dashboard() {
               <PushButton />
             </div>
           </div>
+
+          {data.staleMessage ? <WarningState message={data.staleMessage} /> : null}
 
           <div id="market" className="grid scroll-mt-4 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             <OverviewCard label="Nifty" value={numberLabel(details?.niftyValue)} change={details?.niftyChangePercent} icon={<TrendingUp className="size-4 text-mint" />} />

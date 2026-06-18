@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
@@ -30,7 +31,16 @@ load_dotenv(PROJECT_ROOT / ".env", encoding="utf-8-sig")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
-SCANNER_API_KEY = os.getenv("SCANNER_API_KEY")
+SCANNER_API_KEY = (os.getenv("SCANNER_API_KEY") or "").strip()
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def now_ist() -> dt.datetime:
+    return dt.datetime.now(IST)
+
+
+def current_report_date() -> str:
+    return now_ist().date().isoformat()
 
 
 def fetch_market_inputs() -> tuple[dict[str, PriceSeries], dict[str, PriceSeries], dict[str, PriceSeries]]:
@@ -88,7 +98,7 @@ def build_report(
     ]
 
     return {
-        "report_date": dt.date.today().isoformat(),
+        "report_date": current_report_date(),
         "session": session,
         "market_mood": mood.mood,
         "sector_in_focus": sector_in_focus,
@@ -404,6 +414,11 @@ def send_push_alert(alert: dict[str, Any]) -> dict[str, Any]:
         },
         timeout=20,
     )
+    if response.status_code == 401:
+        raise RuntimeError(
+            f"Push send unauthorized at {APP_URL}/api/push/send. "
+            "Ensure GitHub Actions SCANNER_API_KEY exactly matches the app deployment SCANNER_API_KEY."
+        )
     response.raise_for_status()
     return response.json()
 
@@ -436,7 +451,7 @@ def main() -> None:
     options_research = enrich_options_research(build_options_research(mood), mood, news_risk_score)
     previous_market_mood = None if args.dry_run else get_previous_market_mood()
     alerts = generate_alerts(
-        report_date=dt.date.today().isoformat(),
+        report_date=current_report_date(),
         session=args.session,
         mood=mood,
         sector_scores=sector_scores,

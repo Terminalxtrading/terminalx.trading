@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import type { PushSubscription } from "web-push";
 import { configureWebPush } from "@/lib/web-push";
 import { getSupabaseAdmin } from "@/lib/supabase";
@@ -6,8 +6,14 @@ import { noStoreJson } from "@/lib/http";
 import { captureError } from "@/lib/monitoring";
 
 export async function POST(request: NextRequest) {
-  const apiKey = request.headers.get("x-scanner-api-key");
-  if (apiKey !== process.env.SCANNER_API_KEY) {
+  const apiKey = request.headers.get("x-scanner-api-key")?.trim();
+  const expectedApiKey = process.env.SCANNER_API_KEY?.trim();
+
+  if (!expectedApiKey) {
+    return noStoreJson({ error: "SCANNER_API_KEY is not configured on the app deployment." }, { status: 500 });
+  }
+
+  if (!apiKey || apiKey !== expectedApiKey) {
     return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   }
 
